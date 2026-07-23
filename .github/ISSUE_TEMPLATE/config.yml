@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: MasterDnsVPN upstream issues
+    url: https://github.com/masterking32/MasterDnsVPN/issues
+    about: Report protocol, client, server, and official image problems upstream.
+  - name: Security policy
+    url: https://github.com/XXcipherX/masterdns-vps-setup/security/policy
+    about: Read this before reporting a vulnerability or exposed secret.
