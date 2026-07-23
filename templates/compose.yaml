@@ -1,0 +1,30 @@
+services:
+  masterdnsvpn:
+    image: ${MASTERDNS_IMAGE}
+    container_name: masterdnsvpn
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${MASTERDNS_DOMAIN}
+      CONFIG_FILE: server_config.toml
+      KEY_FILE: encrypt_key.txt
+    ports:
+      - "53:53/udp"
+      - "53:53/tcp"
+    volumes:
+      - ./data:/data
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    security_opt:
+      - no-new-privileges:true
+    ulimits:
+      nofile:
+        soft: 1048576
+        hard: 1048576
+    stop_grace_period: 30s
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "5"

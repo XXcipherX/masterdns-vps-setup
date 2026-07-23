@@ -1,0 +1,53 @@
+name: Bug report
+description: Report a reproducible problem in the VPS installer
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Never paste `encrypt_key.txt`, generated `client_config.toml`, credentials, or unredacted logs.
+        Protocol/client/server bugs belong in the upstream MasterDnsVPN repository.
+  - type: input
+    id: version
+    attributes:
+      label: Installer version
+      description: Output of `vps-setup.sh --version`
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: VPS operating system
+      placeholder: Ubuntu 24.04 amd64
+    validations:
+      required: true
+  - type: input
+    id: image
+    attributes:
+      label: MasterDnsVPN image tag or digest
+      placeholder: ghcr.io/masterking32/masterdnsvpn:latest
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      description: Include the exact command with domain/IP/key replaced by placeholders.
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Redacted doctor output
+      description: Paste `vps-setup.sh doctor` output after removing identifying details.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true

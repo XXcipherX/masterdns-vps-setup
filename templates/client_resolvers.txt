@@ -1,0 +1,10 @@
+# One recursive DNS resolver per line.
+# Supported formats: IP, IP:PORT, CIDR, CIDR:PORT, or [IPv6]:PORT.
+# Resolver behavior varies by network. Remove slow/unreachable entries and use
+# the upstream resolver scanner when public resolvers are filtered.
+
+1.1.1.1
+1.0.0.1
+8.8.8.8
+8.8.4.4
+9.9.9.9

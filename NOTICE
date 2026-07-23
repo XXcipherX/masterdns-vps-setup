@@ -1,0 +1,15 @@
+masterdns-vps-setup is an independent deployment helper for MasterDnsVPN.
+
+MasterDnsVPN
+Copyright (c) 2026 Amin Mahmoudi
+https://github.com/masterking32/MasterDnsVPN
+Licensed under the MIT License:
+https://github.com/masterking32/MasterDnsVPN/blob/main/LICENSE
+
+This repository does not redistribute MasterDnsVPN source code or binaries.
+The official container image is downloaded directly from
+ghcr.io/masterking32/masterdnsvpn.
+
+The starter TOML files are interoperability configurations based on the public
+MasterDnsVPN configuration schema and samples, reviewed at commit
+bc69a58be67b8ff304908fdb9081a53f4a666be6 (2026-07-19).

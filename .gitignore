@@ -1,0 +1,9 @@
+.env
+data/
+client/client_config.toml
+client/client_resolvers.txt
+*.bak
+*.bak.*
+*.log
+.idea/
+.vscode/
