@@ -56,6 +56,7 @@ bash -n vps-setup.sh tests/smoke.sh
   [[ "$(key_length_for_method 3)" == "16" ]]
   [[ "$(key_length_for_method 4)" == "24" ]]
   [[ "$(key_length_for_method 5)" == "32" ]]
+  [[ "$ENCRYPTION_NAME" == "xor" ]]
 
   command() {
     if [[ "${1:-}" == "-v" ]]; then
@@ -82,75 +83,75 @@ bash -n vps-setup.sh tests/smoke.sh
   configure_firewall
 )
 
-CHACHA_DIR="$TMP_ROOT/chacha/deployment"
+DEFAULT_DIR="$TMP_ROOT/default/deployment"
 bash vps-setup.sh install \
   --dry-run \
   --domain V.Example.COM. \
-  --install-dir "$CHACHA_DIR" \
+  --install-dir "$DEFAULT_DIR" \
   --image ghcr.io/masterking32/masterdnsvpn:latest
 
 for file in \
-  "$CHACHA_DIR/.masterdns-vps-setup" \
-  "$CHACHA_DIR/.env" \
-  "$CHACHA_DIR/compose.yaml" \
-  "$CHACHA_DIR/data/server_config.toml" \
-  "$CHACHA_DIR/data/encrypt_key.txt" \
-  "$CHACHA_DIR/client/client_config.toml" \
-  "$CHACHA_DIR/client/client_resolvers.txt"; do
+  "$DEFAULT_DIR/.masterdns-vps-setup" \
+  "$DEFAULT_DIR/.env" \
+  "$DEFAULT_DIR/compose.yaml" \
+  "$DEFAULT_DIR/data/server_config.toml" \
+  "$DEFAULT_DIR/data/encrypt_key.txt" \
+  "$DEFAULT_DIR/client/client_config.toml" \
+  "$DEFAULT_DIR/client/client_resolvers.txt"; do
   assert_file "$file"
 done
 
-assert_contains "$CHACHA_DIR/.env" "MASTERDNS_DOMAIN=v.example.com"
-assert_contains "$CHACHA_DIR/.env" "MASTERDNS_IMAGE=ghcr.io/masterking32/masterdnsvpn:latest"
-assert_contains "$CHACHA_DIR/data/server_config.toml" 'DOMAIN = ["v.example.com"]'
-assert_contains "$CHACHA_DIR/data/server_config.toml" "DATA_ENCRYPTION_METHOD = 2"
-assert_contains "$CHACHA_DIR/data/server_config.toml" 'LOG_LEVEL = "WARN"'
-assert_contains "$CHACHA_DIR/client/client_config.toml" 'DOMAINS = ["v.example.com"]'
-assert_contains "$CHACHA_DIR/client/client_config.toml" "DATA_ENCRYPTION_METHOD = 2"
-assert_contains "$CHACHA_DIR/compose.yaml" "NET_BIND_SERVICE"
-assert_contains "$CHACHA_DIR/compose.yaml" "no-new-privileges:true"
-assert_contains "$CHACHA_DIR/compose.yaml" '"53:53/udp"'
-assert_contains "$CHACHA_DIR/compose.yaml" '"53:53/tcp"'
+assert_contains "$DEFAULT_DIR/.env" "MASTERDNS_DOMAIN=v.example.com"
+assert_contains "$DEFAULT_DIR/.env" "MASTERDNS_IMAGE=ghcr.io/masterking32/masterdnsvpn:latest"
+assert_contains "$DEFAULT_DIR/data/server_config.toml" 'DOMAIN = ["v.example.com"]'
+assert_contains "$DEFAULT_DIR/data/server_config.toml" "DATA_ENCRYPTION_METHOD = 1"
+assert_contains "$DEFAULT_DIR/data/server_config.toml" 'LOG_LEVEL = "WARN"'
+assert_contains "$DEFAULT_DIR/client/client_config.toml" 'DOMAINS = ["v.example.com"]'
+assert_contains "$DEFAULT_DIR/client/client_config.toml" "DATA_ENCRYPTION_METHOD = 1"
+assert_contains "$DEFAULT_DIR/compose.yaml" "NET_BIND_SERVICE"
+assert_contains "$DEFAULT_DIR/compose.yaml" "no-new-privileges:true"
+assert_contains "$DEFAULT_DIR/compose.yaml" '"53:53/udp"'
+assert_contains "$DEFAULT_DIR/compose.yaml" '"53:53/tcp"'
 
-if rg -n '__[A-Z0-9_]+__' "$CHACHA_DIR" >/dev/null 2>&1; then
+if rg -n '__[A-Z0-9_]+__' "$DEFAULT_DIR" >/dev/null 2>&1; then
   fail "unrendered placeholder found"
 elif ! command -v rg >/dev/null 2>&1 \
-  && grep -R -E '__[A-Z0-9_]+__' "$CHACHA_DIR" >/dev/null 2>&1; then
+  && grep -R -E '__[A-Z0-9_]+__' "$DEFAULT_DIR" >/dev/null 2>&1; then
   fail "unrendered placeholder found"
 fi
 
-server_key="$(tr -d '\r\n[:space:]' <"$CHACHA_DIR/data/encrypt_key.txt")"
+server_key="$(tr -d '\r\n[:space:]' <"$DEFAULT_DIR/data/encrypt_key.txt")"
 client_key="$(
   sed -nE 's/^ENCRYPTION_KEY = "([^"]+)"$/\1/p' \
-    "$CHACHA_DIR/client/client_config.toml"
+    "$DEFAULT_DIR/client/client_config.toml"
 )"
-[[ "$server_key" =~ ^[0-9a-f]{32}$ ]] || fail "invalid generated ChaCha20 key"
+[[ "$server_key" =~ ^[0-9a-f]{32}$ ]] || fail "invalid generated XOR key"
 [[ "$server_key" == "$client_key" ]] || fail "client and server keys differ"
 
 sed -i \
   's/DOMAIN = \["v.example.com"\]/DOMAIN = ["v.example.com", "w.example.com"]/' \
-  "$CHACHA_DIR/data/server_config.toml"
+  "$DEFAULT_DIR/data/server_config.toml"
 (
   # shellcheck disable=SC1091
   source "$REPO_ROOT/vps-setup.sh"
-  INSTALL_DIR="$CHACHA_DIR"
+  INSTALL_DIR="$DEFAULT_DIR"
   canonicalize_install_dir
   render_client_files
 )
 assert_contains \
-  "$CHACHA_DIR/client/client_config.toml" \
+  "$DEFAULT_DIR/client/client_config.toml" \
   'DOMAINS = ["v.example.com", "w.example.com"]'
 sed -i \
   's/DOMAIN = \["v.example.com", "w.example.com"\]/DOMAIN = ["v.example.com"]/' \
-  "$CHACHA_DIR/data/server_config.toml"
+  "$DEFAULT_DIR/data/server_config.toml"
 
-printf '\n192.0.2.53\n' >>"$CHACHA_DIR/client/client_resolvers.txt"
+printf '\n192.0.2.53\n' >>"$DEFAULT_DIR/client/client_resolvers.txt"
 bash vps-setup.sh install \
   --dry-run \
   --domain v.example.com \
-  --install-dir "$CHACHA_DIR"
-assert_contains "$CHACHA_DIR/client/client_resolvers.txt" "192.0.2.53"
-[[ "$(tr -d '\r\n[:space:]' <"$CHACHA_DIR/data/encrypt_key.txt")" == "$server_key" ]] \
+  --install-dir "$DEFAULT_DIR"
+assert_contains "$DEFAULT_DIR/client/client_resolvers.txt" "192.0.2.53"
+[[ "$(tr -d '\r\n[:space:]' <"$DEFAULT_DIR/data/encrypt_key.txt")" == "$server_key" ]] \
   || fail "idempotent install rotated the key"
 
 AES_DIR="$TMP_ROOT/aes/deployment"
@@ -186,12 +187,12 @@ assert_fails bash vps-setup.sh install \
 assert_fails bash vps-setup.sh install \
   --dry-run \
   --domain changed.example.com \
-  --install-dir "$CHACHA_DIR"
+  --install-dir "$DEFAULT_DIR"
 assert_fails bash vps-setup.sh install \
   --dry-run \
   --domain v.example.com \
   --encryption aes-256-gcm \
-  --install-dir "$CHACHA_DIR"
+  --install-dir "$DEFAULT_DIR"
 
 assert_fails bash vps-setup.sh uninstall \
   --dry-run \
@@ -207,9 +208,9 @@ assert_contains SECURITY.md "rotate-key"
 
 if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
   docker compose \
-    --project-directory "$CHACHA_DIR" \
-    --env-file "$CHACHA_DIR/.env" \
-    -f "$CHACHA_DIR/compose.yaml" \
+    --project-directory "$DEFAULT_DIR" \
+    --env-file "$DEFAULT_DIR/.env" \
+    -f "$DEFAULT_DIR/compose.yaml" \
     config --quiet
 fi
 

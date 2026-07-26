@@ -3,7 +3,7 @@
 set -Eeuo pipefail
 IFS=$'\n\t'
 
-readonly SCRIPT_VERSION="0.1.0"
+readonly SCRIPT_VERSION="0.1.1"
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
 readonly DEFAULT_INSTALL_DIR="/opt/masterdns-vps-setup"
@@ -14,7 +14,7 @@ INSTALL_DIR="${MASTERDNS_INSTALL_DIR:-$DEFAULT_INSTALL_DIR}"
 COMMAND="install"
 DOMAIN=""
 IMAGE=""
-ENCRYPTION_NAME="chacha20"
+ENCRYPTION_NAME="xor"
 ENCRYPTION_SET=false
 ASSUME_YES=false
 DRY_RUN=false
@@ -94,8 +94,8 @@ Commands:
 Options:
   --domain DOMAIN          Delegated tunnel domain, for example v.example.com
   --image IMAGE            Container image/tag/digest
-  --encryption METHOD      chacha20 (default), aes-128-gcm, aes-192-gcm,
-                           aes-256-gcm, xor, or none
+  --encryption METHOD      xor (default), chacha20, aes-128-gcm,
+                           aes-192-gcm, aes-256-gcm, or none
   --install-dir PATH       Deployment directory (default: /opt/masterdns-vps-setup)
   --yes, -y                Accept safe non-destructive prompts
   --follow, -f             Follow logs
