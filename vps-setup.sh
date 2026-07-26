@@ -3,7 +3,7 @@
 set -Eeuo pipefail
 IFS=$'\n\t'
 
-readonly SCRIPT_VERSION="0.1.1"
+readonly SCRIPT_VERSION="0.1.2"
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_DIR
 readonly DEFAULT_INSTALL_DIR="/opt/masterdns-vps-setup"
@@ -102,7 +102,7 @@ Options:
   --purge                  With uninstall, also delete persistent data
   --skip-dns-check         Do not check public DNS during installation
   --skip-firewall          Do not add UFW/firewalld rules
-  --skip-docker-install    Fail instead of installing missing Docker packages
+  --skip-docker-install    Fail instead of installing Docker with get.docker.com
   --no-resolved-fix        Do not offer to release port 53 from systemd-resolved
   --dry-run                Render a deployment without Docker or host changes
   --help, -h               Show this help
@@ -631,108 +631,32 @@ install_base_dependencies() {
   esac
 }
 
-docker_conflicting_packages() {
-  local package
-  local -a conflicts=()
-  for package in docker.io docker-compose docker-compose-v2 docker-doc podman-docker containerd runc; do
-    if dpkg-query -W -f='${db:Status-Abbrev}' "$package" 2>/dev/null | grep -q '^ii'; then
-      conflicts+=("$package")
-    fi
-  done
-  if ((${#conflicts[@]} > 0)); then
-    printf '%s\n' "${conflicts[@]}"
-  fi
-}
+docker_install() {
+  local installer
 
-install_docker_apt() {
-  local repo_os
-  local codename
-  local arch
-  local key_temp
-  local conflicts
-
-  load_os_release
-  case "${ID:-}" in
-    debian|ubuntu) repo_os="$ID" ;;
-    *) die "Automatic Docker installation supports Debian and Ubuntu only." ;;
-  esac
-
-  conflicts="$(docker_conflicting_packages)"
-  if [[ -n "$conflicts" ]]; then
-    local conflict
-    log_warn "Conflicting packages are installed:"
-    while IFS= read -r conflict; do
-      printf '  %s\n' "$conflict" >&2
-    done <<<"$conflicts"
-    die "Remove or repair the conflicting Docker packages manually; the installer will not remove them."
-  fi
-
-  export DEBIAN_FRONTEND=noninteractive
-  apt-get update
-  apt-get install -y --no-install-recommends ca-certificates curl
-  install -m 0755 -d /etc/apt/keyrings
-
-  key_temp="$(mktemp)"
-  curl -fsSL --retry 3 "https://download.docker.com/linux/$repo_os/gpg" -o "$key_temp"
-  install -m 0644 "$key_temp" /etc/apt/keyrings/docker.asc
-  rm -f -- "$key_temp"
-
-  codename="${VERSION_CODENAME:-}"
-  if [[ "$repo_os" == "ubuntu" && -n "${UBUNTU_CODENAME:-}" ]]; then
-    codename="$UBUNTU_CODENAME"
-  fi
-  [[ -n "$codename" ]] || die "Could not determine the distribution codename."
-  arch="$(dpkg --print-architecture)"
-
-  if [[ ! -e /etc/apt/sources.list.d/docker.sources ]]; then
-    cat >/etc/apt/sources.list.d/docker.sources <<EOF
-Types: deb
-URIs: https://download.docker.com/linux/$repo_os
-Suites: $codename
-Components: stable
-Architectures: $arch
-Signed-By: /etc/apt/keyrings/docker.asc
-EOF
+  installer="$(mktemp)"
+  if curl -fsSL --retry 3 https://get.docker.com -o "$installer" \
+    && bash "$installer"; then
+    rm -f -- "$installer"
   else
-    log_info "Using existing /etc/apt/sources.list.d/docker.sources."
-  fi
-
-  apt-get update
-  apt-get install -y \
-    docker-ce \
-    docker-ce-cli \
-    containerd.io \
-    docker-buildx-plugin \
-    docker-compose-plugin
-
-  if command -v systemctl >/dev/null 2>&1; then
-    systemctl enable --now docker
+    rm -f -- "$installer"
+    return 1
   fi
 }
 
 ensure_docker() {
-  if ! command -v docker >/dev/null 2>&1; then
+  if ! command -v docker >/dev/null 2>&1 \
+    || ! docker compose version >/dev/null 2>&1; then
     [[ "$SKIP_DOCKER_INSTALL" != true ]] \
-      || die "Docker is missing and --skip-docker-install was specified."
-    log_info "Installing Docker Engine from Docker's official apt repository."
-    install_docker_apt
+      || die "Docker or the Compose plugin is missing and --skip-docker-install was specified."
+    log_info "Installing Docker Engine and the Compose plugin with get.docker.com."
+    docker_install || die "Docker installation with get.docker.com failed."
   fi
 
-  if ! docker compose version >/dev/null 2>&1; then
-    [[ "$SKIP_DOCKER_INSTALL" != true ]] \
-      || die "The Docker Compose plugin is missing."
-    load_os_release
-    case "${ID:-}" in
-      debian|ubuntu)
-        apt-get update
-        apt-get install -y docker-compose-plugin
-        ;;
-      *)
-        die "Install the Docker Compose plugin and rerun the installer."
-        ;;
-    esac
-  fi
-
+  command -v docker >/dev/null 2>&1 \
+    || die "Docker installation completed without providing the docker command."
+  docker compose version >/dev/null 2>&1 \
+    || die "Docker installation completed without providing the Compose plugin."
   docker info >/dev/null 2>&1 \
     || die "Docker is installed, but the daemon is not available."
 }

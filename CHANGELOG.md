@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented here.
 
+## [0.1.2] - 2026-07-26
+
+### Changed
+
+- Replaced manual Docker apt repository and package setup with Docker's official
+  `get.docker.com` convenience script.
+- Docker installation now runs when either Docker Engine or the Compose plugin
+  is missing.
+
 ## [0.1.1] - 2026-07-26
 
 ### Changed

@@ -7,7 +7,7 @@
 
 ## Что делает установщик
 
-- устанавливает Docker Engine и Compose plugin из официального apt-репозитория Docker, если их ещё нет;
+- устанавливает Docker Engine и Compose plugin через официальный скрипт `get.docker.com`, если их ещё нет;
 - поддерживает существующий Docker на других Linux-дистрибутивах;
 - создаёт управляемое развёртывание в `/opt/masterdns-vps-setup`;
 - запускает официальный образ `ghcr.io/masterking32/masterdnsvpn`;
@@ -89,9 +89,14 @@ cd masterdns-vps-setup
 sudo ./vps-setup.sh install --domain v.example.com
 ```
 
-Если Docker отсутствует на Debian/Ubuntu, установщик добавит [официальный apt-репозиторий Docker](https://docs.docker.com/engine/install/) и установит Engine вместе с [Compose plugin](https://docs.docker.com/compose/install/linux/).
+Если отсутствует Docker либо команда `docker compose`, установщик скачает
+[официальный convenience script Docker](https://docs.docker.com/engine/install/ubuntu/#install-using-the-convenience-script)
+с `https://get.docker.com` во временный файл, запустит его и удалит файл после
+завершения. Скрипт не выполняет удалённый код через конструкцию `curl | sh`.
 
-Установщик намеренно не удаляет конфликтующие пакеты `docker.io`, `podman-docker`, `containerd` или `runc`. Если найдено неполное/смешанное Docker-окружение, он остановится и предложит исправить его вручную.
+Если на сервере уже установлено неполное или несовместимое Docker-окружение,
+сначала исправьте его вручную либо запустите установщик с
+`--skip-docker-install`, чтобы запретить автоматическую установку.
 
 Без аргумента `--domain` скрипт спросит домен интерактивно:
 

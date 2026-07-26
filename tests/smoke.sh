@@ -83,6 +83,34 @@ bash -n vps-setup.sh tests/smoke.sh
   configure_firewall
 )
 
+(
+  # shellcheck disable=SC1091
+  source "$REPO_ROOT/vps-setup.sh"
+  installer_path="$TMP_ROOT/docker-installer"
+
+  mktemp() {
+    printf '%s\n' "$installer_path"
+  }
+  curl() {
+    : >"$installer_path"
+  }
+  bash() {
+    [[ "${1:-}" == "$installer_path" ]]
+  }
+
+  docker_install
+  [[ ! -e "$installer_path" ]] || fail "successful Docker installer was not removed"
+
+  curl() {
+    : >"$installer_path"
+    return 1
+  }
+  if docker_install; then
+    fail "failed Docker download was accepted"
+  fi
+  [[ ! -e "$installer_path" ]] || fail "failed Docker installer was not removed"
+)
+
 DEFAULT_DIR="$TMP_ROOT/default/deployment"
 bash vps-setup.sh install \
   --dry-run \
@@ -200,6 +228,8 @@ assert_fails bash vps-setup.sh uninstall \
   --purge \
   --install-dir "$TMP_ROOT/purge/deployment"
 
+assert_contains vps-setup.sh "https://get.docker.com"
+assert_contains vps-setup.sh 'bash "$installer"'
 assert_not_contains vps-setup.sh "curl -fsSL https://get.docker.com |"
 assert_not_contains vps-setup.sh "kill -9"
 assert_contains README.md "dig +short NS"
